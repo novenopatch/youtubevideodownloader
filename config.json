@@ -7,9 +7,9 @@
     "INVALID_LINK_MSG": "The link is invalid.",
     "RESOLUTIONS_MSG": "Available qualities ",
     "CHOICE_QUALITY_MSG": "Choose a quality (enter a number or/leave blank to use the highest_resolution) ",
-    "START_DOWNLOAD_MSG": "-----------Start of download-----------",
-    "END_MSG": "-----------End-----------",
-    "DOWNLOADING_MSG": "-----------Downloading-----------",
+    "START_DOWNLOAD_MSG": "Start of download",
+    "END_MSG": "End",
+    "DOWNLOADING_MSG": "Downloading",
     "SORRY_ERROR_MSG": "Sorry Error ",
     "YOUR_CHOICE_MSG": "Your choice ",
     "YOUR_RESOLUTION_CHOICE_MSG": "Your default resolution"
