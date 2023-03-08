@@ -28,7 +28,7 @@ WELCOME_STR: str = """
 
 
 class YTDown:
-    def __init__(self, save: Save,graph_mode=False):
+    def __init__(self, save: Save, graph_mode=False):
         self.save = save
         self.output_path: str = ""
         self.download_resolutions = ["144p", "240p", "360p", "480p", "720p", "1080p"]
@@ -123,6 +123,20 @@ class YTDown:
             choice = int(choice)
             return streams[choice - 1]
 
+
+    def print_title(self, title: str):
+        self.display_message(f"Title:{title}")
+
+    def save_streams(self, youtube: YouTube, resolution: str):
+        self.download_streamQuery.append(
+            (youtube, self.filter_streams(youtube, resolution))
+        )
+
+    def save_list_of_streams(self, youtubes: Iterable[YouTube], resolution: str):
+        for i, youtube in enumerate(youtubes):
+            self.download_streamQuery.append(
+                (youtube, self.filter_streams(youtube, resolution))
+            )
     def choice_and_download(self, youtube: YouTube, streams: StreamQuery, is_playlist: bool = False):
 
         try:
@@ -131,7 +145,8 @@ class YTDown:
             else:
                 # self.select_resolution
                 video_choice = youtube.streams.filter(
-                    subtype=self.save.get_data(SaveData.FILE_EXTENSION), resolution=self.select_resolution
+                    subtype=self.save.get_data(SaveData.FILE_EXTENSION),
+                    resolution=self.select_resolution
                 ).first()
 
                 if self.save.get_data(SaveData.DEBUG):
@@ -149,11 +164,7 @@ class YTDown:
         except Exception as e:
             self.display_message(f" {self.save.get_message('SORRY_ERROR_MSG')} : {youtube.title}.{str(e)}")
 
-    def download_video_file(self, youtube: YouTube):
-        streams = self.filter_streams(youtube)
-        self.choice_and_download(youtube, streams, False)
-
-    def download_videos_file(self, youtube_list: Iterable[YouTube]):
+    def get_playlist_stream(self, youtube_list: Iterable[YouTube]) -> list[tuple[YouTube, Stream]]:
         downloads = []
         length = len(youtube_list)
         for i, youtube in enumerate(youtube_list):
@@ -161,7 +172,14 @@ class YTDown:
             self.display_message(f"{i + 1}/{length})-{youtube.title}")
 
             downloads.append(self.choice_and_download(youtube, streams, True))
+        return downloads
 
+    def download_video_file(self, youtube: YouTube):
+        streams = self.filter_streams(youtube)
+        self.choice_and_download(youtube, streams, False)
+
+    def download_videos_file(self, youtube_list: Iterable[YouTube]):
+        downloads = self.get_playlist_stream(youtube_list)
         for youtube, video_choice in downloads:
             try:
                 self.download(youtube, video_choice)
@@ -169,20 +187,6 @@ class YTDown:
                 self.display_message(f"{self.save.get_message('SORRY_ERROR_MSG')}: {str(e)}'")
 
         self.display_message(self.save.get_message('END_MESSAGE'))
-
-    def print_title(self, title: str):
-        self.display_message(f"Title:{title}")
-
-    def save_streams(self, youtube: YouTube, resolution: str):
-        self.download_streamQuery.append(
-            (youtube, self.filter_streams(youtube, resolution))
-        )
-
-    def save_list_of_streams(self, youtubes: Iterable[YouTube], resolution: str):
-        for i, youtube in enumerate(youtubes):
-            self.download_streamQuery.append(
-                (youtube, self.filter_streams(youtube, resolution))
-            )
 
     def download_single_video(self, link: str) -> YouTube | None:
         youtube = YouTube(link)
@@ -203,17 +207,17 @@ class YTDown:
     def on_progress(self, stream, chunk, bytes_remaining):
         total_size = stream.filesize
         bytes_downloaded = total_size - bytes_remaining
-
         progress = bytes_downloaded / total_size * 100
-        self.display_message(
-            f"\r {self.save.get_message('DOWNLOADING_MSG')} {progress:.2f}%: {(bytes_downloaded / 1024 / 1024):.2f}Mb/{(total_size / 1024 / 1024):.2f}Mb ",
-            end="")
         if self.graph_mod:
             return {
                 "progress": progress,
                 "bytes_downloaded": (bytes_downloaded / 1024 / 1024),
                 "total_size": (total_size / 1024 / 1024)
             }
+        else:
+            self.display_message(
+                f"\r {self.save.get_message('DOWNLOADING_MSG')} {progress:.2f}%: {(bytes_downloaded / 1024 / 1024):.2f}Mb/{(total_size / 1024 / 1024):.2f}Mb ",
+                end="")
 
     def launch(self, link: str, choice: int, output_path: str, selected_resolution: str | None = None):
 

@@ -8,8 +8,8 @@ import os
 
 from pytube import Stream, YouTube
 
-from src.main import YTDown
-from src.save import Save
+from main import YTDown
+from save import Save
 
 
 class CheckBoxItem(customtkinter.CTkFrame):
@@ -95,17 +95,7 @@ class App(customtkinter.CTk):
 
         self.progressbar = customtkinter.CTkProgressBar(self.home_frame)
 
-        self.url_input_frame = customtkinter.CTkFrame(self.home_frame)
-        self.radiobutton_frame = customtkinter.CTkFrame(self.home_frame)
-        self.entry_url = customtkinter.CTkEntry(self.url_input_frame, placeholder_text="Past url")
-        self.entry_output = customtkinter.CTkEntry(self.url_input_frame, placeholder_text="Output")
-        self.label_output = customtkinter.CTkLabel(self.url_input_frame, text="Folder")
-        self.radio_var = tkinter.IntVar(value=0)
-        self.label_radio_group = customtkinter.CTkLabel(master=self.radiobutton_frame, text="Choice type")
-        self.radio_button_1 = customtkinter.CTkRadioButton(master=self.radiobutton_frame, variable=self.radio_var,
-                                                           value=0, text="Video")
-        self.radio_button_2 = customtkinter.CTkRadioButton(master=self.radiobutton_frame, variable=self.radio_var,
-                                                           value=1, text="Playlist")
+
 
         self.download_button = customtkinter.CTkButton(self.home_frame, corner_radius=0, height=40,
                                                        border_spacing=10,
@@ -125,26 +115,53 @@ class App(customtkinter.CTk):
         self.downloads_button.grid(row=2, column=0, sticky="ew")
         self.appearance_mode_menu.grid(row=6, column=0, padx=20, pady=20, sticky="s")
         self.progressbar.grid(row=1, column=0, padx=20, pady=10)
-        self.url_input_frame.grid(row=2, column=0, padx=(20, 20), pady=(20, 0), sticky="nsew")
-        self.radiobutton_frame.grid(row=3, column=0, padx=(20, 20), pady=(20, 0), sticky="nsew")
+
         self.download_button.grid(row=5, padx=(20, 20), pady=(20, 0), )
 
+
+        self.add_input_frame()
+        self.add_radio_button()
+        self.add_option_frame()
+        #self.add_choice_frame()
+        self.home_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+
+
+
+    def add_input_frame(self):
+        self.video_or_playlist_var = tkinter.IntVar(value=0)
+        self.url_input_frame = customtkinter.CTkFrame(self.home_frame)
+        self.url_var = customtkinter.StringVar(value="")
+        self.entry_url = customtkinter.CTkEntry(
+            self.url_input_frame, placeholder_text="Past url",
+            textvariable=self.url_var,
+        )
+        self.output_var = customtkinter.StringVar(value=f"{os.getcwd()}/downloads/")
+        self.entry_output = customtkinter.CTkEntry(self.url_input_frame, placeholder_text="Output",
+                                                   textvariable=self.output_var)
+        self.label_output = customtkinter.CTkLabel(self.url_input_frame, text="Folder")
+        self.url_input_frame.grid(row=2, column=0, padx=(20, 20), pady=(20, 0), sticky="nsew")
         self.url_input_frame.grid_rowconfigure(0, weight=1)
         self.url_input_frame.grid_columnconfigure(3, weight=1)
         self.label_url = customtkinter.CTkLabel(self.url_input_frame, text="url:")
-
         self.label_url.grid(row=0, column=0, padx=10, pady=10)
         self.entry_url.grid(row=0, column=2, columnspan=2, padx=10, pady=10, sticky="nsew")
         self.label_output.grid(row=1, column=0, padx=10, pady=10)
         self.entry_output.grid(row=1, column=2, columnspan=2, padx=10, pady=10, sticky="nsew")
-
+    def add_radio_button(self):
+        self.radiobutton_frame = customtkinter.CTkFrame(self.home_frame)
+        self.label_radio_group = customtkinter.CTkLabel(master=self.radiobutton_frame, text="Choice type")
+        self.radio_button_1 = customtkinter.CTkRadioButton(master=self.radiobutton_frame,
+                                                           variable=self.video_or_playlist_var,
+                                                           value=0, text="Video",
+                                                           command=self.video_or_playlist_radio_group_event)
+        self.radio_button_2 = customtkinter.CTkRadioButton(master=self.radiobutton_frame,
+                                                           variable=self.video_or_playlist_var,
+                                                           value=1, text="Playlist",
+                                                           command=self.video_or_playlist_radio_group_event)
         self.label_radio_group.grid(row=0, column=1, columnspan=1, padx=10, pady=10, sticky="")
         self.radio_button_1.grid(row=0, column=2, pady=10, padx=20, sticky="n")
         self.radio_button_2.grid(row=0, column=3, pady=10, padx=20, sticky="n")
-
-        self.add_option_frame()
-        self.add_choice_frame()
-        self.home_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self.radiobutton_frame.grid(row=3, column=0, padx=(20, 20), pady=(20, 0), sticky="nsew")
 
     def add_option_frame(self):
 
@@ -154,14 +171,15 @@ class App(customtkinter.CTk):
         self.option_frame.grid_columnconfigure(5, weight=1)
         self.label_resolution = customtkinter.CTkLabel(self.option_frame, text="resolution:")
         self.label_type = customtkinter.CTkLabel(self.option_frame, text="type:")
-        self.switch_var = customtkinter.StringVar(value="audio")
+        self.audio_or_video_var = customtkinter.StringVar(value="audio")
         self.switch = customtkinter.CTkSwitch(master=self.option_frame,
                                               text="audio",
-                                              command=self.switch_event, variable=self.switch_var, onvalue="audio",
+                                              command=self.audio_or_video_switch_event, variable=self.audio_or_video_var, onvalue="audio",
                                               offvalue="video")
+        self.resolution_var =  customtkinter.StringVar(value="720p")
         self.combobox_2 = customtkinter.CTkOptionMenu(master=self.option_frame,
                                                       values=["144p", "240p", "360p", "480p", "720p", "1080p"],
-                                                      command=self.optionmenu_callback)
+                                                      command=self.optionmenu_callback,variable=self.resolution_var)
         self.label_type.grid(row=1, column=1, padx=5, pady=5)
         self.switch.grid(row=1, column=2, padx=5, pady=5)
         self.label_resolution.grid(row=1, column=3, padx=5, pady=5)
@@ -195,22 +213,29 @@ class App(customtkinter.CTk):
     def change_appearance_mode_event(self, new_appearance_mode):
         customtkinter.set_appearance_mode(new_appearance_mode)
 
+    def get_url_input_text(self)->str:
+        return self.url_var.get()
     def home_button_event(self):
         self.select_frame_by_name("home")
         print("home")
 
     def downloads_button_event(self):
-        self.select_frame_by_name("downloads")
-        print("download")
+        #self.select_frame_by_name("downloads")
+        print(
+            f"url:{self.get_url_input_text()},folder:{self.output_var.get()},resolution:{self.resolution_var.get()},audio or video:{self.audio_or_video_var.get()},no:{self.video_or_playlist_var.get()}"
+
+        )
 
     def checkbox_frame_event(self):
         print(f"checkbox frame modified: {self.checkbox_frame.get_checked_items()}")
 
-    def switch_event(self):
-        self.switch.configure(text=self.switch_var.get())
-        print("switch toggled, current value:", self.switch_var.get())
+    def audio_or_video_switch_event(self):
+        self.switch.configure(text=self.audio_or_video_var.get())
+        print("switch toggled, current value:", self.audio_or_video_var.get())
+    def video_or_playlist_radio_group_event(self):
+        print(f"type:{self.video_or_playlist_var.get()}")
 
 
 if __name__ == "__main__":
-    app = App()
+    app = App(Save())
     app.mainloop()
