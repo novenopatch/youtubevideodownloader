@@ -1,5 +1,5 @@
 {
-  "DEBUG": false,
+  "DEBUG": true,
   "FILE_EXTENSION": "mp4",
   "FILE_PREFIX": "join-",
   "MESSAGES": {

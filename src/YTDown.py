@@ -9,10 +9,11 @@ import os
 import subprocess
 import argparse
 
+from colorama import init
+#from termcolor import colored
+
 from Enumeration import SaveData
 from save import Save
-from colorama import init
-from termcolor import colored
 
 WELCOME_STR: str = """ 
             
@@ -28,13 +29,14 @@ WELCOME_STR: str = """
 
 
 class YTDown:
-    def __init__(self, save: Save, graph_mode=False):
+    def __init__(self, save: Save, graph_mode=False, command=None):
         self.save = save
         self.output_path: str = ""
         self.download_resolutions = ["144p", "240p", "360p", "480p", "720p", "1080p"]
         self.select_resolution = None
         self.graph_mod = graph_mode
-        self.download_streamQuery: list[tuple[YouTube, StreamQuery]] = []
+        self.command = command if command else self.on_progress
+        self.download_streams: list[tuple[YouTube, Stream]] = []
 
     def display_banner(self):
         self.display_message(WELCOME_STR)
@@ -70,7 +72,7 @@ class YTDown:
         try:
             audio = yt.streams.get_audio_only()
             self.display_message(f"{self.save.get_message('START_DOWNLOAD_MSG')}: {yt.title}-(Audio)")
-            yt.register_on_progress_callback(self.on_progress)
+            yt.register_on_progress_callback(self.command)
             audio_file = audio.download(
                 output_path=self.output_path, filename=f"{self.norm_file_name(yt.title)}.mp3"
             )
@@ -88,7 +90,7 @@ class YTDown:
 
     def download(self, youtube: YouTube, video_choice: Stream):
         self.display_message(f"{self.save.get_message('START_DOWNLOAD_MSG')}:-{youtube.title}")
-        youtube.register_on_progress_callback(self.on_progress)
+        youtube.register_on_progress_callback(self.command)
         video_file = video_choice.download(
             output_path=self.output_path,
             filename=self.norm_file_name(
@@ -107,10 +109,10 @@ class YTDown:
         else:
             self.display_message(f"{self.save.get_message('SORRY_ERROR_MSG')} ")
 
-    def filter_streams(self, youtube: YouTube, resolution: str = None) -> StreamQuery:
+    def filter_streams(self, youtube: YouTube) -> StreamQuery:
         return youtube.streams.filter(
             subtype=self.save.get_data(
-                SaveData.FILE_EXTENSION), resolution=self.select_resolution if not self.graph_mod else resolution
+                SaveData.FILE_EXTENSION), resolution=self.select_resolution
         ).order_by(
             'resolution')
 
@@ -123,20 +125,25 @@ class YTDown:
             choice = int(choice)
             return streams[choice - 1]
 
-
     def print_title(self, title: str):
         self.display_message(f"Title:{title}")
 
-    def save_streams(self, youtube: YouTube, resolution: str):
-        self.download_streamQuery.append(
-            (youtube, self.filter_streams(youtube, resolution))
-        )
 
-    def save_list_of_streams(self, youtubes: Iterable[YouTube], resolution: str):
-        for i, youtube in enumerate(youtubes):
-            self.download_streamQuery.append(
-                (youtube, self.filter_streams(youtube, resolution))
+    def save_list_of_streams(self, youtubes: YouTube|Iterable[YouTube]):
+        if isinstance(youtubes,Iterable):
+            for i, youtube in enumerate(youtubes):
+                self.download_streams.append(
+                    (youtube, self.filter_streams(youtube).first())
+                )
+        else:
+            self.download_streams.append(
+                (youtubes, self.filter_streams(youtubes).first())
             )
+        if self.save.get_data(SaveData.DEBUG):
+            print(self.get_download_streams())
+
+    def get_download_streams(self)-> list[tuple[YouTube, Stream]]:
+        return self.download_streams
     def choice_and_download(self, youtube: YouTube, streams: StreamQuery, is_playlist: bool = False):
 
         try:
@@ -188,12 +195,15 @@ class YTDown:
 
         self.display_message(self.save.get_message('END_MESSAGE'))
 
+
     def download_single_video(self, link: str) -> YouTube | None:
         youtube = YouTube(link)
         if not self.graph_mod:
             self.download_video_file(youtube)
         else:
             return youtube
+        if self.save.get_data(SaveData.DEBUG):
+            print(link,youtube)
 
     def download_playlist(self, link: str) -> Iterable[YouTube] | None:
         playlist = Playlist(link)
@@ -203,23 +213,18 @@ class YTDown:
             self.download_videos_file(playlist.videos)
         else:
             return playlist.videos
+        if self.save.get_data(SaveData.DEBUG):
+            print(link,playlist)
 
     def on_progress(self, stream, chunk, bytes_remaining):
         total_size = stream.filesize
         bytes_downloaded = total_size - bytes_remaining
         progress = bytes_downloaded / total_size * 100
-        if self.graph_mod:
-            return {
-                "progress": progress,
-                "bytes_downloaded": (bytes_downloaded / 1024 / 1024),
-                "total_size": (total_size / 1024 / 1024)
-            }
-        else:
-            self.display_message(
-                f"\r {self.save.get_message('DOWNLOADING_MSG')} {progress:.2f}%: {(bytes_downloaded / 1024 / 1024):.2f}Mb/{(total_size / 1024 / 1024):.2f}Mb ",
-                end="")
+        self.display_message(
+            f"\r {self.save.get_message('DOWNLOADING_MSG')} {progress:.2f}%: {(bytes_downloaded / 1024 / 1024):.2f}Mb/{(total_size / 1024 / 1024):.2f}Mb ")
 
-    def launch(self, link: str, choice: int, output_path: str, selected_resolution: str | None = None):
+    def launch(self, link: str, choice: int, output_path: str, selected_resolution: str | None = None) \
+            -> YouTube | Iterable[YouTube] | None:
 
         try:
             link = self.validate_url(link)
@@ -230,9 +235,9 @@ class YTDown:
                 self.select_resolution = selected_resolution
             self.output_path = output_path
             if choice == 1:
-                self.download_single_video(link)
+                return self.download_single_video(link)
             else:
-                self.download_playlist(link)
+                return self.download_playlist(link)
         except Exception as e:
             self.display_message(f"il semble avoir un souci avec votre lien . Erreur: {str(e)}")
 
@@ -251,8 +256,8 @@ class YTDown:
         return input(self.save.get_message('YOUR_CHOICE_MSG'))
 
     def display_message(self, message: str):
-        if not yt_down.graph_mod:
-            print(message)
+        if not self.graph_mod:
+            print(message, end="")
 
 
 if __name__ == '__main__':
