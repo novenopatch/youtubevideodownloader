@@ -157,7 +157,6 @@ class App(customtkinter.CTk):
             yt_down = YTDown(self.save, True)
             streams = yt_down.launch(
                 self.get_vars(GraphVars.URL),
-                self.get_vars(GraphVars.VIDEO_OR_PLAYLIST),
                 self.get_vars(GraphVars.FOLDER),
                 self.get_vars(GraphVars.RESOLUTION)
             )

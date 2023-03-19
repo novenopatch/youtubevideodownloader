@@ -12,7 +12,7 @@ import argparse
 from colorama import init
 #from termcolor import colored
 
-from Enumeration import SaveData
+from Enumeration import SaveData,YdownVars
 from save import Save
 
 WELCOME_STR: str = """ 
@@ -43,14 +43,20 @@ class YTDown:
         for i, choice in enumerate(self.save.OPTIONS_CHOICE_STR):
             self.display_message(f"{i + 1}): {choice}")
 
-    def validate_url(self, link: str) -> str:
-        pattern = re.compile(
-            r'(https?://)?(www\.)?youtube\.com/watch\?v=[\w-]+(&\S*)?|^(https?://)?(www\.)?youtu\.be/[\w-]+$')
-        if pattern.match(link):
-            return link
+    def validate_url(self, link: str) -> tuple:
+        pattern_video = re.compile(
+            r'^(?!.*list=).*((https?://)?(www\.)?youtube\.com/watch\?v=[\w-]+(&\S*)?|^(https?://)?(www\.)?youtu\.be/[\w-]+)$'
+            )
+        pattern_playlist = re.compile(
+           r'(https?://)?(www\.)?youtube\.com/((playlist\?list=[\w-]+(&\S*)?)|(watch\?v=[\w-]+(&\S*)?(&list=[\w-]+(&\S*)?)?))$'
+            )
+
+        if pattern_video.match(link):
+            return link,YdownVars.VIDEO
+        elif pattern_playlist.match(link):
+             return link,YdownVars.PLAYLIST
         else:
             raise ValueError(self.save.get_message('INVALID_LINK_MSG'))
-
     def norm_file_name(self, name: str) -> str:
         new: str = ""
         for c in name:
@@ -223,21 +229,26 @@ class YTDown:
         self.display_message(
             f"\r {self.save.get_message('DOWNLOADING_MSG')} {progress:.2f}%: {(bytes_downloaded / 1024 / 1024):.2f}Mb/{(total_size / 1024 / 1024):.2f}Mb ")
 
-    def launch(self, link: str, choice: int, output_path: str, selected_resolution: str | None = None) \
+    def launch(self, link: str,  output_path: str, selected_resolution: str | None = None) \
             -> YouTube | Iterable[YouTube] | None:
 
         try:
-            link = self.validate_url(link)
-            choice = choice
+            link,url_type = self.validate_url(link)
+            if self.save.get_data(SaveData.DEBUG):
+                print(f"--link: {link},   --url_type: {url_type}")
+                #return
+            #choice = choice
             if not selected_resolution:
                 self.select_resolution = self.display_available_resolution()
             else:
                 self.select_resolution = selected_resolution
             self.output_path = output_path
-            if choice == 1:
+            if url_type == YdownVars.VIDEO:
                 return self.download_single_video(link)
-            else:
+            elif url_type ==YdownVars.PLAYLIST:
                 return self.download_playlist(link)
+            #else:
+                
         except Exception as e:
             self.display_message(f"il semble avoir un souci avec votre lien . Erreur: {str(e)}")
 
@@ -263,14 +274,14 @@ class YTDown:
 if __name__ == '__main__':
     yt_down = YTDown(Save())
     parser = argparse.ArgumentParser(description='Télécharger une vidéo  ou une playliste Youtube')
-    parser.add_argument('-t', '--url_type', type=int, nargs='?', help='1 pour une video et 2 pour une playliste')
+    #parser.add_argument('-t', '--url_type', type=int, nargs='?', help='1 pour une video et 2 pour une playliste')
     parser.add_argument('-l', '--link', type=str, nargs='?', help='le lien de la video ou la playliste')
     parser.add_argument('-o', '--output_dir', type=str, nargs='?', help='le dossier de la video')
     parser.add_argument('-r', '--video_resolution', type=str, nargs='?', help='La résolution de la vidéo ex: 1080p')
     if not yt_down.graph_mod:
         video_resolution = None
         args = parser.parse_args()
-        choice = args.url_type if args.url_type else yt_down.display_choice_msg()
+        #choice = args.url_type if args.url_type else yt_down.display_choice_msg()
         link = args.link if args.link else input("Lien de la vidéo ou le Lien de la playliste : ")
         output_path = args.output_dir if args.output_dir else input(
             "Chemin de téléchargement (laisser vide pour utiliser le répertoire courant) : ").strip()
@@ -278,4 +289,4 @@ if __name__ == '__main__':
 
         if not output_path:
             output_path = os.getcwd()
-        yt_down.launch(link, int(choice), output_path, video_resolution)
+        yt_down.launch(link, output_path, video_resolution)

@@ -17,3 +17,7 @@ class GraphVars(Enum):
 
     AUDIO_OR_VIDEO = 4
     RESOLUTION = 5
+    
+class YdownVars(Enum):
+    VIDEO= 1
+    PLAYLIST = 2
